@@ -6,8 +6,8 @@ import telebot
 import schedule
 
 # Telegram Bot Setup
-TELEGRAM_BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
-CHAT_ID = "YOUR_TELEGRAM_CHAT_ID"
+TELEGRAM_BOT_TOKEN = "7896879656:AAG-3v7HhkmT20AnhC_CpBGKpiZyUmsu1Ao"
+CHAT_ID = "6144704496"
 bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
 
 # Stock list (Add more stocks here)

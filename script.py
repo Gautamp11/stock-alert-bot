@@ -94,8 +94,8 @@ import schedule
 import time
 
 # Telegram Bot Setup
-TELEGRAM_BOT_TOKEN = "your-bot-token"
-CHAT_ID = "your-chat-id"
+TELEGRAM_BOT_TOKEN = "7896879656:AAG-3v7HhkmT20AnhC_CpBGKpiZyUmsu1Ao"
+CHAT_ID = "6144704496"
 bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
 
 # NSE Instance

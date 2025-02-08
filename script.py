@@ -9,7 +9,8 @@ import schedule
 TELEGRAM_BOT_TOKEN = "7896879656:AAG-3v7HhkmT20AnhC_CpBGKpiZyUmsu1Ao"
 CHAT_ID = "6144704496"
 bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
-
+bot.send_message(CHAT_ID, "📢 Stock Alert Test: Your bot is working!")
+print("Test message sent to Telegram!")
 # Stock list (Add more stocks here)
 stock_symbols = ["FEDERALBNK.NS", "TCS.NS", "HDFCBANK.NS"]  
 

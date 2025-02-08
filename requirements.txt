@@ -1,4 +1,5 @@
 yfinance
+nsetools
 pandas
 numpy
 ta

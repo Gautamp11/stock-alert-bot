@@ -73,75 +73,6 @@ def get_stock_data(symbol):
         print(f"❌ Error fetching {symbol}: {e}")
         return None
 
-# Function to analyze stock data
-# def analyze_stock(symbol):
-    df = get_stock_data(symbol)
-    if df is None:
-        return
-
-    try:
-        # Ensure the 'Close' and 'Volume' columns are 1-dimensional
-        close_prices = df['Close'].squeeze()  # Convert to 1D
-        volumes = df['Volume'].squeeze()  # Convert to 1D
-
-        # Calculate Bollinger Bands
-        bb = ta.volatility.BollingerBands(close_prices, window=20, window_dev=2)
-        df['BB_Lower'] = bb.bollinger_lband()
-        df['BB_Middle'] = bb.bollinger_mavg()
-        df['BB_Upper'] = bb.bollinger_hband()
-
-        # Calculate OBV
-        df['OBV'] = ta.volume.OnBalanceVolumeIndicator(close_prices, volumes).on_balance_volume()
-
-        # Calculate RSI
-        df['RSI'] = ta.momentum.RSIIndicator(close_prices, window=14).rsi()
-
-        # Calculate MACD
-        macd = ta.trend.MACD(close_prices)
-        df['MACD'] = macd.macd()
-        df['Signal'] = macd.macd_signal()
-
-        # Get the latest row
-        latest = df.iloc[-1]
-
-        # Print indicator values for debugging
-        print(f"\n📊 Indicator Values for {symbol}:")
-        print(f"  - RSI: {latest['RSI'].item():.2f}")
-        print(f"  - Close Price: {latest['Close'].item():.2f}")
-        print(f"  - Bollinger Lower Band: {latest['BB_Lower'].item():.2f}")
-        print(f"  - Bollinger Middle Band: {latest['BB_Middle'].item():.2f}")
-        print(f"  - Bollinger Upper Band: {latest['BB_Upper'].item():.2f}")
-        print(f"  - MACD: {latest['MACD'].item():.2f}")
-        print(f"  - MACD Signal: {latest['Signal'].item():.2f}")
-
-        # Define alert conditions
-        alert_message = f"📢 *Stock Alert: {symbol}* 🚀\n"
-        alert_triggered = False
-
-        # Check if ALL conditions are met
-        rsi_condition = latest['RSI'].item() > 30  # RSI is above 30 (Oversold)
-        bb_condition = latest['Close'].item() <= latest['BB_Lower'].item() * (1 + threshold)  # Close is near the lower band
-        macd_condition = latest['MACD'].item() > latest['Signal'].item()  # MACD Crossover (Bullish Signal)
-
-        # Print conditions for debugging
-        print(f"  - RSI Condition (RSI > 30): {rsi_condition}")
-        print(f"  - Bollinger Band Condition (Close near Lower Band): {bb_condition}")
-        print(f"  - MACD Condition (MACD > Signal): {macd_condition}")
-
-        if rsi_condition and bb_condition and macd_condition:
-            alert_message += "🔹 RSI is above 30\n"
-            alert_message += "🔹 Price is near Lower Bollinger Band (Potential Reversal)\n"
-            alert_message += "🔹 MACD Crossover (Bullish Signal)\n"
-            alert_triggered = True
-
-        # Send alert if ALL conditions are met
-        if alert_triggered:
-            send_telegram_message(alert_message)
-        else:
-            print(f"✅ {symbol} analyzed. No alerts triggered.")
-
-    except Exception as e:
-        print(f"❌ Error analyzing {symbol}: {e}")
 
 # Function to analyze stock data
 def analyze_stock(symbol):
@@ -184,22 +115,22 @@ def analyze_stock(symbol):
         # Print indicator values for debugging
         print(f"\n📊 Indicator Values for {symbol} (Close: ₹{latest_close:.2f}):")
         print(f"  - RSI: {latest['RSI'].item():.2f}")
-        print(f"  - Bollinger Lower Band: {latest['BB_Lower'].item():.2f}")
+        print(f"  - Bollinger Upper Band: {latest['BB_Upper'].item():.2f}")
         print(f"  - MACD: {latest['MACD'].item():.2f}")
 
         # Define alert conditions
-        alert_message = f"📢 *Stock Alert: {symbol}* 🚀\n"
+        alert_message = f"📢 *Stock Sell Alert: {symbol}* 🚀\n"
         alert_triggered = False
 
         # Check if ALL conditions are met
-        rsi_condition = latest['RSI'].item() > 30  # RSI above 30
-        bb_condition = latest['Close'].item() <= latest['BB_Lower'].item() * (1 + threshold)  # Close near lower band
-        macd_condition = latest['MACD'].item() > latest['Signal'].item()  # MACD crossover
+        rsi_condition = latest['RSI'].item() > 70  # RSI above 70
+        bb_condition = latest['Close'].item() >= latest['BB_Upper'].item() * (1 - threshold)    # Close above upper band
+        macd_condition = latest['MACD'].item() < latest['Signal'].item()  # MACD crossover
 
         if rsi_condition and bb_condition and macd_condition:
-            alert_message += "🔹 RSI is above 30\n"
-            alert_message += "🔹 Price is near Lower Bollinger Band (Potential Reversal)\n"
-            alert_message += "🔹 MACD Crossover (Bullish Signal)\n"
+            alert_message += "🔹 RSI is above 70\n"
+            alert_message += "🔹 Price is above upper Bollinger Band (Potential Reversal)\n"
+            alert_message += "🔹 MACD Crossover (Bearish Signal)\n"
             alert_triggered = True
 
         # Send alert if conditions met

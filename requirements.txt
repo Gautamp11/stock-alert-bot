@@ -6,3 +6,8 @@ ta
 telebot
 schedule
 flask
+
+
+# Telegram Bot Details
+TELEGRAM_BOT_TOKEN = "7896879656:AAG-3v7HhkmT20AnhC_CpBGKpiZyUmsu1Ao"
+TELEGRAM_CHAT_ID = "6144704496"

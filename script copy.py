@@ -56,7 +56,7 @@ def get_nse_symbols():
     except Exception as e:
         print(f"❌ Error reading NSE CSV: {e}")
         return []
-
+# yoyb ozep drlj ufwx
 # Function to fetch stock data
 def get_stock_data(symbol):
     try:
@@ -192,12 +192,12 @@ def analyze_stock(symbol):
         alert_triggered = False
 
         # Check if ALL conditions are met
-        rsi_condition = latest['RSI'].item() > 30  # RSI above 30
+        rsi_condition = latest['RSI'].item() > 40  # RSI above 40
         bb_condition = latest['Close'].item() <= latest['BB_Lower'].item() * (1 + threshold)  # Close near lower band
         macd_condition = latest['MACD'].item() > latest['Signal'].item()  # MACD crossover
 
         if rsi_condition and bb_condition and macd_condition:
-            alert_message += "🔹 RSI is above 30\n"
+            alert_message += "🔹 RSI is above 40\n"
             alert_message += "🔹 Price is near Lower Bollinger Band (Potential Reversal)\n"
             alert_message += "🔹 MACD Crossover (Bullish Signal)\n"
             alert_triggered = True

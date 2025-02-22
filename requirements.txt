@@ -1,10 +1,14 @@
-yfinance 
+yfinance
 pandas
 ta
 time
 requests
 io
-
+os
+concurrent
+smtplib
+email
+datetime
 
 
 

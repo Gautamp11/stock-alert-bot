@@ -1,7 +1,6 @@
 yfinance
 pandas
 ta
-time
 requests
 io
 os

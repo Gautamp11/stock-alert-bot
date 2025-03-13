@@ -183,7 +183,6 @@
 #     except KeyboardInterrupt:
 #         print("\n🛑 Script stopped by user.")
 
-
 import yfinance as yf
 import pandas as pd
 import ta
@@ -227,10 +226,11 @@ def get_nse_symbols():
 # Function to fetch stock data
 def get_stock_data(symbol):
     try:
-        symbol = f"{symbol}.NS" if not symbol.endswith('.NS') else symbol  # Ensure .NS suffix
+        symbol = f"{symbol}.NS" if not symbol.endswith('.NS') else symbol
         print(f"🔄 Fetching data for {symbol}...")
         stock = yf.download(symbol, period="6mo", interval="1d")
         time.sleep(2)  # Add a delay to avoid rate limits
+        
         if stock.empty:
             print(f"⚠ No data found for {symbol}. Skipping...")
             return None
@@ -248,6 +248,10 @@ def analyze_stock(symbol):
         return
 
     try:
+        # Debugging: Log the first few rows of the DataFrame
+        print(f"✅ Data fetched for {symbol}:")
+        print(df.head())
+
         # Ensure the 'Close' column is available
         close_prices = df['Close'].squeeze()  # Convert to 1D
         latest_close = close_prices.iloc[-1].item()  # Get the latest closing price

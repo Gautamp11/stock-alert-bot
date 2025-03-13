@@ -373,7 +373,7 @@ if __name__ == "__main__":
         alerts_triggered = 0
 
         # Increase max_workers to improve performance (adjust based on your system's capabilities)
-        with ThreadPoolExecutor(max_workers=5) as executor:
+        with ThreadPoolExecutor(max_workers=1) as executor:
             futures = {executor.submit(analyze_stock, symbol): symbol for symbol in stock_list}
             for future in as_completed(futures):
                 try:

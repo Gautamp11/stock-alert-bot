@@ -364,16 +364,16 @@ def send_telegram_alert(message):
 if __name__ == "__main__":
     stock_list = get_nse_symbols()  # Fetch latest NSE stock symbols
     
-    # Limit to first 10 stocks for testing
-    stock_list = stock_list[:10]
-    print(f"🎯 Testing with first 10 stocks: {stock_list}")
+    # Process all stocks (removed slicing)
+    print(f"🎯 Processing all {len(stock_list)} stocks...")
 
     try:
         analyzed_count = 0
         skipped_count = 0
         alerts_triggered = 0
 
-        with ThreadPoolExecutor(max_workers=1) as executor:
+        # Increase max_workers to improve performance (adjust based on your system's capabilities)
+        with ThreadPoolExecutor(max_workers=5) as executor:
             futures = {executor.submit(analyze_stock, symbol): symbol for symbol in stock_list}
             for future in as_completed(futures):
                 try:
@@ -386,6 +386,6 @@ if __name__ == "__main__":
         print(f"  - Total Stocks Analyzed: {analyzed_count}")
         print(f"  - Stocks Skipped (Price < ₹100): {skipped_count}")
         print(f"  - Alerts Triggered: {alerts_triggered}")
-        print("✅ Analysis completed for first 10 stocks.")
+        print("✅ Analysis completed for all stocks.")
     except KeyboardInterrupt:
         print("\n🛑 Script stopped by user.")

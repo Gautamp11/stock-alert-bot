@@ -369,7 +369,7 @@ if __name__ == "__main__":
     print(f"🎯 Testing with first 10 stocks: {stock_list}")
 
     try:
-        with ThreadPoolExecutor(max_workers=2) as executor:
+        with ThreadPoolExecutor(max_workers=1) as executor:
             futures = {executor.submit(analyze_stock, symbol): symbol for symbol in stock_list}
             for future in as_completed(futures):
                 try:

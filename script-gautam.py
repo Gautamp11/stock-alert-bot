@@ -369,14 +369,23 @@ if __name__ == "__main__":
     print(f"🎯 Testing with first 10 stocks: {stock_list}")
 
     try:
+        analyzed_count = 0
+        skipped_count = 0
+        alerts_triggered = 0
+
         with ThreadPoolExecutor(max_workers=1) as executor:
             futures = {executor.submit(analyze_stock, symbol): symbol for symbol in stock_list}
             for future in as_completed(futures):
                 try:
                     future.result()
+                    analyzed_count += 1
                 except Exception as e:
                     print(f"❌ Error processing {futures[future]}: {e}")
         
+        print("\n📊 Analysis Summary:")
+        print(f"  - Total Stocks Analyzed: {analyzed_count}")
+        print(f"  - Stocks Skipped (Price < ₹100): {skipped_count}")
+        print(f"  - Alerts Triggered: {alerts_triggered}")
         print("✅ Analysis completed for first 10 stocks.")
     except KeyboardInterrupt:
         print("\n🛑 Script stopped by user.")

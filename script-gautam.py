@@ -226,23 +226,29 @@ def get_nse_symbols():
 # Function to fetch stock data
 def get_stock_data(symbol):
     try:
-        symbol = f"{symbol}.NS" if not symbol.endswith('.NS') else symbol
-        print(f"🔄 Fetching data for {symbol}...")
-        stock = yf.download(symbol, period="6mo", interval="1d")
+        # Ensure the symbol ends with .NS
+        symbol_with_suffix = f"{symbol}.NS" if not symbol.endswith('.NS') else symbol
+        print(f"🔄 Fetching data for {symbol_with_suffix}...")
+        
+        # Fetch data using yfinance
+        stock = yf.download(symbol_with_suffix, period="6mo", interval="1d", auto_adjust=True)
         time.sleep(2)  # Add a delay to avoid rate limits
         
+        # Check if data is empty
         if stock.empty:
-            print(f"⚠ No data found for {symbol}. Skipping...")
+            print(f"⚠ No data found for {symbol_with_suffix}. Skipping...")
             return None
         
+        # Reset index and return the DataFrame
         stock.reset_index(inplace=True)
         return stock
     except Exception as e:
-        print(f"❌ Error fetching {symbol}: {e}")
+        print(f"❌ Error fetching {symbol_with_suffix}: {e}")
         return None
 
 # Function to analyze stock data
 def analyze_stock(symbol):
+    # Fetch data for the symbol
     df = get_stock_data(symbol)
     if df is None:
         return

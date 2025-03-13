@@ -357,6 +357,11 @@ def send_telegram_alert(message):
 # Main execution
 if __name__ == "__main__":
     stock_list = get_nse_symbols()  # Fetch latest NSE stock symbols
+    
+    # Limit to first 10 stocks for testing
+    stock_list = stock_list[:10]
+    print(f"🎯 Testing with first 10 stocks: {stock_list}")
+
     try:
         with ThreadPoolExecutor(max_workers=2) as executor:
             futures = {executor.submit(analyze_stock, symbol): symbol for symbol in stock_list}
@@ -366,6 +371,6 @@ if __name__ == "__main__":
                 except Exception as e:
                     print(f"❌ Error processing {futures[future]}: {e}")
         
-        print("✅ Analysis completed.")
+        print("✅ Analysis completed for first 10 stocks.")
     except KeyboardInterrupt:
         print("\n🛑 Script stopped by user.")

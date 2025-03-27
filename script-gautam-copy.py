@@ -73,18 +73,13 @@ def analyze_stock(symbol):
         print(f"✅ Data fetched for {symbol}:")
         print(df.head())
 
-        # Handle missing or incomplete data
-        if df.isnull().values.any():
-            print(f"⚠ Skipping {symbol}: Missing or invalid data.")
-            return
-
         # Ensure the 'Close' column is available
         close_prices = df['Close'].squeeze()  # Convert to 1D
         latest_close = close_prices.iloc[-1].item()  # Get the latest closing price
 
-        # Skip if price is below ₹50
-        if latest_close < 50:
-            print(f"⏭ Skipping {symbol}: Close price ₹{latest_close:.2f} is below ₹50.")
+        # Skip if price is below ₹100
+        if latest_close < 100:
+            print(f"⏭ Skipping {symbol}: Close price ₹{latest_close:.2f} is below ₹100.")
             return
 
         volumes = df['Volume'].squeeze()  # Convert to 1D
@@ -124,10 +119,10 @@ def analyze_stock(symbol):
 
         # Define conditions
         ema_crossover = (prev['EMA_10'].item() <= prev['EMA_21'].item()) and (latest['EMA_10'].item() > latest['EMA_21'].item())
-        rsi_rising = (latest['RSI'].item() > prev['RSI'].item()) and (latest['RSI'].item() > 40)  # Adjusted threshold
+        rsi_rising = (latest['RSI'].item() > prev['RSI'].item()) and (latest['RSI'].item() > 50)
         macd_crossover = (prev['MACD'].item() <= prev['Signal'].item()) and (latest['MACD'].item() > latest['Signal'].item())
         obv_breakout = (latest_OBV > df['OBV'].iloc[-3:].mean().item()) and (latest_OBV > prev['OBV'].item())
-        bollinger_squeeze = (latest['BB_Width'].item() < df['BB_Width'].rolling(window=20).mean().iloc[-1].item() * 1.2)  # Adjusted threshold
+        bollinger_squeeze = (latest['BB_Width'].item() < df['BB_Width'].rolling(window=20).mean().iloc[-1].item())  # Band width is narrowing
 
         # Print indicator values for debugging
         print(f"\n📊 Indicator Values for {symbol} (Close: ₹{latest_close:.2f}):")
@@ -138,16 +133,9 @@ def analyze_stock(symbol):
         print(f"  - Bollinger Squeeze: {bollinger_squeeze}")
         print(f"  - ATR: {latest_ATR:.2f}")
 
-        # Combine conditions to detect early-stage signals (relaxed logic with scoring)
-        score = 0
-        if ema_crossover: score += 1
-        if macd_crossover: score += 1
-        if rsi_rising: score += 1
-        if obv_breakout: score += 1
-        if bollinger_squeeze: score += 1
-
-        if score >= 3:  # Trigger alert if at least 3 conditions are met
-            print(f"{symbol} meets early-stage conditions!")
+        # Combine conditions to detect early-stage signals
+        if ema_crossover and macd_crossover and rsi_rising and obv_breakout and bollinger_squeeze:
+            print(f"{symbol} meets all early-stage conditions!")
             stop_loss = round(latest_close - (2 * latest_ATR), 2)  # 2x ATR for stop-loss
             target = round(latest_close + (2 * latest_ATR), 2)     # 2x ATR for target
 
@@ -211,7 +199,7 @@ if __name__ == "__main__":
         
         print("\n📊 Analysis Summary:")
         print(f"  - Total Stocks Analyzed: {analyzed_count}")
-        print(f"  - Stocks Skipped (Price < ₹50): {skipped_count}")
+        print(f"  - Stocks Skipped (Price < ₹100): {skipped_count}")
         print(f"  - Alerts Triggered: {alerts_triggered}")
         print("✅ Analysis completed for all stocks.")
     except KeyboardInterrupt:

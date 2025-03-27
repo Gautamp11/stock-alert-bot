@@ -128,7 +128,9 @@ def analyze_stock(symbol):
         macd_crossover = (prev['MACD'].item() <= prev['Signal'].item()) and (latest['MACD'].item() > latest['Signal'].item())
         obv_breakout = (latest_OBV > df['OBV'].iloc[-3:].mean().item()) and (latest_OBV > prev['OBV'].item())
         bollinger_squeeze = (latest['BB_Width'].item() < df['BB_Width'].rolling(window=20).mean().iloc[-1].item() * 1.2)  # Adjusted threshold
-
+        # Additional checks for uptrend confirmation
+        price_above_emas = (latest_close > latest['EMA_10'].item()) and (latest_close > latest['EMA_21'].item()) and (latest_close > latest['EMA_50'].item())
+        macd_positive = (latest['MACD'].item() > 0) and (latest['Signal'].item() > 0)
         # Print indicator values for debugging
         print(f"\n📊 Indicator Values for {symbol} (Close: ₹{latest_close:.2f}):")
         print(f"  - RSI: {latest['RSI'].item():.2f}")
@@ -138,13 +140,19 @@ def analyze_stock(symbol):
         print(f"  - Bollinger Squeeze: {bollinger_squeeze}")
         print(f"  - ATR: {latest_ATR:.2f}")
 
+         # Combine conditions to detect early-stage signals
+        if not ema_crossover:
+            print(f"❌ Skipping {symbol}: EMA crossover condition not met.")
+            return
+
         # Combine conditions to detect early-stage signals (relaxed logic with scoring)
         score = 0
-        if ema_crossover: score += 1
         if macd_crossover: score += 1
         if rsi_rising: score += 1
         if obv_breakout: score += 1
         if bollinger_squeeze: score += 1
+        if price_above_emas: score += 1
+        if macd_positive: score += 1
 
         if score >= 3:  # Trigger alert if at least 3 conditions are met
             print(f"{symbol} meets early-stage conditions!")

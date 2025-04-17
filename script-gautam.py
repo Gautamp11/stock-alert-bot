@@ -83,7 +83,7 @@ def analyze_stock(symbol):
         latest_close = close_prices.iloc[-1].item()  # Get the latest closing price
 
         # Skip if price is below ₹50
-        if latest_close < 50:
+        if latest_close < 100:
             print(f"⏭ Skipping {symbol}: Close price ₹{latest_close:.2f} is below ₹50.")
             return
 

@@ -6,6 +6,8 @@ import requests
 import io
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
+from queue import Queue
+import os
 
 # Telegram Bot Configuration
 TELEGRAM_BOT_TOKEN = "7896879656:AAG-3v7HhkmT20AnhC_CpBGKpiZyUmsu1Ao"
@@ -17,8 +19,8 @@ NSE_CSV_URL = "https://archives.nseindia.com/content/equities/EQUITY_L.csv"
 # Threshold for "near the lower band" (e.g., within 2%)
 threshold = 0.02  # 2%
 
-# Global list to store analysis results for Excel export
-analysis_results = []
+# Global thread-safe queue to store analysis results
+analysis_queue = Queue()
 
 # Function to fetch NSE stock symbols
 def get_nse_symbols():
@@ -59,95 +61,72 @@ def get_stock_data(symbol):
         
         # Reset index and return the DataFrame
         stock.reset_index(inplace=True)
-        return stock
+        return symbol, stock  # Return both symbol and data
     except Exception as e:
-        print(f"❌ Error fetching {symbol_with_suffix}: {e}")
+        print(f"❌ Error fetching {symbol}: {e}")
         return None
 
 # Function to analyze stock data
-def analyze_stock(symbol):
-    global analysis_results
-    # Fetch data for the symbol
-    df = get_stock_data(symbol)
-    if df is None:
-        return
-
+def analyze_stock(symbol, stock_data):
     try:
-        # Debugging: Log the first few rows of the DataFrame
-        print(f"✅ Data fetched for {symbol}:")
-        print(df.head())
-
         # Handle missing or incomplete data
-        if df.isnull().values.any():
+        if stock_data is None or stock_data.isnull().values.any():
             print(f"⚠ Skipping {symbol}: Missing or invalid data.")
             return
 
         # Ensure the 'Close' column is available
-        close_prices = df['Close'].squeeze()  # Convert to 1D
+        close_prices = stock_data['Close'].squeeze()  # Convert to 1D
         latest_close = close_prices.iloc[-1].item()  # Get the latest closing price
 
         # Skip if price is below ₹50
-        if latest_close < 100:
+        if latest_close < 50:
             print(f"⏭ Skipping {symbol}: Close price ₹{latest_close:.2f} is below ₹50.")
             return
 
-        volumes = df['Volume'].squeeze()  # Convert to 1D
+        volumes = stock_data['Volume'].squeeze()  # Convert to 1D
 
         # Calculate OBV
-        df['OBV'] = ta.volume.OnBalanceVolumeIndicator(close_prices, volumes).on_balance_volume()
-        latest_OBV = df['OBV'].iloc[-1].item()
+        stock_data['OBV'] = ta.volume.OnBalanceVolumeIndicator(close_prices, volumes).on_balance_volume()
+        latest_OBV = stock_data['OBV'].iloc[-1].item()
 
         # Calculate EMAs
-        df['EMA_10'] = ta.trend.EMAIndicator(close_prices, window=10).ema_indicator()
-        df['EMA_21'] = ta.trend.EMAIndicator(close_prices, window=21).ema_indicator()
-        df['EMA_50'] = ta.trend.EMAIndicator(close_prices, window=50).ema_indicator()
+        stock_data['EMA_10'] = ta.trend.EMAIndicator(close_prices, window=10).ema_indicator()
+        stock_data['EMA_21'] = ta.trend.EMAIndicator(close_prices, window=21).ema_indicator()
+        stock_data['EMA_50'] = ta.trend.EMAIndicator(close_prices, window=50).ema_indicator()
 
         # Calculate Bollinger Bands
         bb = ta.volatility.BollingerBands(close_prices, window=20, window_dev=2)
-        df['BB_Upper'] = bb.bollinger_hband()
-        df['BB_Lower'] = bb.bollinger_lband()
-        df['BB_Width'] = bb.bollinger_hband() - bb.bollinger_lband()  # Band width for squeeze detection
+        stock_data['BB_Upper'] = bb.bollinger_hband()
+        stock_data['BB_Lower'] = bb.bollinger_lband()
+        stock_data['BB_Width'] = bb.bollinger_hband() - bb.bollinger_lband()  # Band width for squeeze detection
 
         # Calculate RSI
-        df['RSI'] = ta.momentum.RSIIndicator(close_prices, window=14).rsi()
+        stock_data['RSI'] = ta.momentum.RSIIndicator(close_prices, window=14).rsi()
 
         # Calculate MACD
         macd = ta.trend.MACD(close_prices)
-        df['MACD'] = macd.macd()
-        df['Signal'] = macd.macd_signal()
+        stock_data['MACD'] = macd.macd()
+        stock_data['Signal'] = macd.macd_signal()
 
         # Calculate ATR
-        high_prices = df['High'].squeeze()
-        low_prices = df['Low'].squeeze()
-        df['ATR'] = ta.volatility.AverageTrueRange(high=high_prices, low=low_prices, close=close_prices, window=14).average_true_range()
-        latest_ATR = df['ATR'].iloc[-1].item()
+        high_prices = stock_data['High'].squeeze()
+        low_prices = stock_data['Low'].squeeze()
+        stock_data['ATR'] = ta.volatility.AverageTrueRange(high=high_prices, low=low_prices, close=close_prices, window=14).average_true_range()
+        latest_ATR = stock_data['ATR'].iloc[-1].item()
 
         # Get the latest row and previous row for comparison
-        latest = df.iloc[-1]
-        prev = df.iloc[-2]
+        latest = stock_data.iloc[-1]
+        prev = stock_data.iloc[-2]
 
         # Define conditions
         ema_crossover = (prev['EMA_10'].item() <= prev['EMA_21'].item()) and (latest['EMA_10'].item() > latest['EMA_21'].item())
         rsi_rising = (latest['RSI'].item() > prev['RSI'].item()) and (latest['RSI'].item() > 40)  # Adjusted threshold
         macd_crossover = (prev['MACD'].item() <= prev['Signal'].item()) and (latest['MACD'].item() > latest['Signal'].item())
-        obv_breakout = (latest_OBV > df['OBV'].iloc[-3:].mean().item()) and (latest_OBV > prev['OBV'].item())
-        bollinger_squeeze = (latest['BB_Width'].item() < df['BB_Width'].rolling(window=20).mean().iloc[-1].item() * 1.2)  # Adjusted threshold
+        obv_breakout = (latest_OBV > stock_data['OBV'].iloc[-3:].mean().item()) and (latest_OBV > prev['OBV'].item())
+        bollinger_squeeze = (latest['BB_Width'].item() < stock_data['BB_Width'].rolling(window=20).mean().iloc[-1].item() * 1.2)  # Adjusted threshold
         # Additional checks for uptrend confirmation
         price_above_emas = (latest_close > latest['EMA_10'].item()) and (latest_close > latest['EMA_21'].item()) and (latest_close > latest['EMA_50'].item())
         macd_positive = (latest['MACD'].item() > 0) and (latest['Signal'].item() > 0)
-
-
-
-
-
-
-
-
-
-         # Combine conditions to detect early-stage signals
-        if not ema_crossover:
-            print(f"❌ Skipping {symbol}: EMA crossover condition not met.")
-            return
 
         # Combine conditions to detect early-stage signals (relaxed logic with scoring)
         score = 0
@@ -170,7 +149,7 @@ def analyze_stock(symbol):
             "ATR": round(latest_ATR, 2),
             "Score": score
         }
-        analysis_results.append(result)
+        analysis_queue.put(result)  # Add result to thread-safe queue
 
         if score >= 3:  # Trigger alert if at least 3 conditions are met
             print(f"{symbol} meets early-stage conditions!")
@@ -227,7 +206,7 @@ def send_excel_file(file_path):
 if __name__ == "__main__":
     stock_list = get_nse_symbols()  # Fetch latest NSE stock symbols
     
-    # Process all stocks (removed slicing)
+    # Process all stocks
     print(f"🎯 Processing all {len(stock_list)} stocks...")
 
     try:
@@ -235,16 +214,30 @@ if __name__ == "__main__":
         skipped_count = 0
         alerts_triggered = 0
 
-        # Increase max_workers to improve performance (adjust based on your system's capabilities)
-        with ThreadPoolExecutor(max_workers=1) as executor:
-            futures = {executor.submit(analyze_stock, symbol): symbol for symbol in stock_list}
+        # Optimal max_workers based on CPU count
+        max_workers = min(32, os.cpu_count() + 4)
+
+        # Step 1: Fetch stock data in parallel
+        stock_data_map = {}
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(get_stock_data, symbol): symbol for symbol in stock_list}
+            for future in as_completed(futures):
+                symbol, stock_data = future.result() or (None, None)
+                if symbol and stock_data is not None:
+                    stock_data_map[symbol] = stock_data
+
+        print(f"✅ Fetched data for {len(stock_data_map)} stocks.")
+
+        # Step 2: Analyze stock data in parallel
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(analyze_stock, symbol, stock_data_map[symbol]): symbol for symbol in stock_data_map}
             for future in as_completed(futures):
                 try:
                     future.result()
                     analyzed_count += 1
                 except Exception as e:
                     print(f"❌ Error processing {futures[future]}: {e}")
-        
+
         print("\n📊 Analysis Summary:")
         print(f"  - Total Stocks Analyzed: {analyzed_count}")
         print(f"  - Stocks Skipped (Price < ₹50): {skipped_count}")
@@ -252,7 +245,11 @@ if __name__ == "__main__":
         print("✅ Analysis completed for all stocks.")
 
         # Export analysis results to Excel
-        if analysis_results:
+        if not analysis_queue.empty():
+            analysis_results = []
+            while not analysis_queue.empty():
+                analysis_results.append(analysis_queue.get())
+            
             results_df = pd.DataFrame(analysis_results)
             excel_file_path = "stock_analysis_results.xlsx"
             results_df.to_excel(excel_file_path, index=False)

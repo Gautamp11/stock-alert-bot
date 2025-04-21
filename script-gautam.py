@@ -17,6 +17,9 @@ NSE_CSV_URL = "https://archives.nseindia.com/content/equities/EQUITY_L.csv"
 # Threshold for "near the lower band" (e.g., within 2%)
 threshold = 0.02  # 2%
 
+# Global list to store analysis results for Excel export
+analysis_results = []
+
 # Function to fetch NSE stock symbols
 def get_nse_symbols():
     try:
@@ -63,6 +66,7 @@ def get_stock_data(symbol):
 
 # Function to analyze stock data
 def analyze_stock(symbol):
+    global analysis_results
     # Fetch data for the symbol
     df = get_stock_data(symbol)
     if df is None:
@@ -131,14 +135,14 @@ def analyze_stock(symbol):
         # Additional checks for uptrend confirmation
         price_above_emas = (latest_close > latest['EMA_10'].item()) and (latest_close > latest['EMA_21'].item()) and (latest_close > latest['EMA_50'].item())
         macd_positive = (latest['MACD'].item() > 0) and (latest['Signal'].item() > 0)
-        # Print indicator values for debugging
-        print(f"\n📊 Indicator Values for {symbol} (Close: ₹{latest_close:.2f}):")
-        print(f"  - RSI: {latest['RSI'].item():.2f}")
-        print(f"  - MACD: {latest['MACD'].item():.2f}")
-        print(f"  - EMA Crossover: {ema_crossover}")
-        print(f"  - OBV Breakout: {obv_breakout}")
-        print(f"  - Bollinger Squeeze: {bollinger_squeeze}")
-        print(f"  - ATR: {latest_ATR:.2f}")
+
+
+
+
+
+
+
+
 
          # Combine conditions to detect early-stage signals
         if not ema_crossover:
@@ -153,6 +157,20 @@ def analyze_stock(symbol):
         if bollinger_squeeze: score += 1
         if price_above_emas: score += 1
         if macd_positive: score += 1
+
+        # Store results for Excel export
+        result = {
+            "Symbol": symbol,
+            "Close Price": round(latest_close, 2),
+            "RSI": round(latest['RSI'].item(), 2),
+            "MACD": round(latest['MACD'].item(), 2),
+            "EMA Crossover": ema_crossover,
+            "OBV Breakout": obv_breakout,
+            "Bollinger Squeeze": bollinger_squeeze,
+            "ATR": round(latest_ATR, 2),
+            "Score": score
+        }
+        analysis_results.append(result)
 
         if score >= 3:  # Trigger alert if at least 3 conditions are met
             print(f"{symbol} meets early-stage conditions!")
@@ -190,6 +208,21 @@ def send_telegram_alert(message):
     except Exception as e:
         print(f"Error sending Telegram alert: {e}")
 
+# Function to send Excel file via Telegram
+def send_excel_file(file_path):
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendDocument"
+    with open(file_path, "rb") as file:
+        files = {"document": file}
+        payload = {"chat_id": TELEGRAM_CHAT_ID}
+        try:
+            response = requests.post(url, data=payload, files=files)
+            if response.status_code == 200:
+                print("Excel file sent successfully!")
+            else:
+                print(f"Failed to send Excel file: {response.text}")
+        except Exception as e:
+            print(f"Error sending Excel file: {e}")
+
 # Main execution
 if __name__ == "__main__":
     stock_list = get_nse_symbols()  # Fetch latest NSE stock symbols
@@ -217,5 +250,15 @@ if __name__ == "__main__":
         print(f"  - Stocks Skipped (Price < ₹50): {skipped_count}")
         print(f"  - Alerts Triggered: {alerts_triggered}")
         print("✅ Analysis completed for all stocks.")
+
+        # Export analysis results to Excel
+        if analysis_results:
+            results_df = pd.DataFrame(analysis_results)
+            excel_file_path = "stock_analysis_results.xlsx"
+            results_df.to_excel(excel_file_path, index=False)
+            print(f"✅ Analysis results saved to {excel_file_path}")
+
+            # Send Excel file via Telegram
+            send_excel_file(excel_file_path)
     except KeyboardInterrupt:
         print("\n🛑 Script stopped by user.")
